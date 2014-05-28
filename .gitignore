@@ -1,0 +1,6 @@
+*.swp
+*.pyc
+*.pyo
+*.log
+*_log
+*.conf
