@@ -97,7 +97,7 @@ if debug: print "Debug mode enabled."
 def run():
     # check for all args
     if options.logfile is None:
-        parser.error("Incorrect number of arguments! Try --help")
+        parser.print_help()
         sys.exit()
 
     if apacheconf is not None:
@@ -276,5 +276,5 @@ def main():
             print "%s\t%s" % (v,k)
 
 
-run()
-
+if __name__ == '__main__':
+    run()
