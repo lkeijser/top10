@@ -77,20 +77,38 @@ parser.add_option("--noclient",
         action="store_true",
         dest="noclient",
         help="Don't generate the top 10 client IP's")
+parser.add_option("-i", "--ipcolumn",
+        action="store",
+        type="string",
+        dest="ipcol",
+        help="Column that contains the client's IP address (start at 0)")
+parser.add_option("-u", "--urlcol",
+        action="store",
+        type="string",
+        dest="urlcol",
+        help="Column that contains the URL request (start at 0)")
+parser.add_option("-k", "--showskipped",
+        action="store_true",
+        dest="showskipped",
+        help="Print the skipped (due to an error) lines at the end of processing.")
+
 
 # parse cmd line options
 (options, args) = parser.parse_args()
 
 
 # our logfile from optionparser
-logfile = options.logfile
-apacheconf = options.apacheconf
-nickname = options.nickname
-debug = options.debug
-clienthost = options.clienthost
-topcount = options.topcount
-nourl = options.nourl
-noclient = options.noclient
+logfile     = options.logfile
+apacheconf  = options.apacheconf
+nickname    = options.nickname
+debug       = options.debug
+clienthost  = options.clienthost
+topcount    = options.topcount
+nourl       = options.nourl
+noclient    = options.noclient
+ipcol       = options.ipcol
+urlcol      = options.urlcol
+showskipped = options.showskipped
 
 if debug: print "Debug mode enabled."
 
@@ -152,6 +170,7 @@ def main():
     # create empty lists
     url_list = {}
     client_list = {}
+    skipped_lines = []
 
     # read logfile
     lines = readFile(logfile)
@@ -165,8 +184,13 @@ def main():
     for line in lines:
         if debug: print "DEBUG: line: %s" % line
         if apacheconf:
-            url = line.split(' ')[pos_r+2]
-            client = line.split(' ')[pos_h].replace('(','').replace(')','').strip()
+            try:
+                url = line.split(' ')[pos_r+2]
+                client = line.split(' ')[pos_h].replace('(','').replace(')','').strip()
+            except:
+                if debug: print "[DEBUG] SKIPPED line: %s" % line
+                skipped_lines.append(line)
+                pass
             try:
                 reqdate = datetime.strptime(line.split(' ')[pos_t].replace('[',''), '%d/%b/%Y:%H:%M:%S')
                 #if debug: print "DEBUG: full request: %s" % line.split(' ')
@@ -176,9 +200,22 @@ def main():
                     print "DEBUG: full request: %s" % line.split(' ')
                     print "DEBUG: error caught: %s" % e
                 # parser.exit()
+        if ipcol and urlcol:
+            try:
+                url = line.split(' ')[int(urlcol)].strip()
+                client = line.split(' ')[int(ipcol)].replace('(','').replace(')','').strip()
+            except:
+                if debug: print "[DEBUG] SKIPPED line: %s" % line
+                skipped_lines.append(line)
+                pass
         else:
-            url = line.split(' ')[6].strip()
-            client = line.split(' ')[0].replace('(','').replace(')','').strip()
+            try:
+                url = line.split(' ')[6].strip()
+                client = line.split(' ')[0].replace('(','').replace(')','').strip()
+            except:
+                if debug: print "[DEBUG] SKIPPED line: %s" % line
+                skipped_lines.append(line)
+                pass
 
         # fill lists
         if apacheconf:
@@ -249,6 +286,14 @@ def main():
         print "Requests matching timeframe: %s" % line_count
         print "Unique URLs matching timeframe: %s" % len(url_list)
         print "Unique Clients matching timeframe: %s" % len(client_list)
+
+
+    if len(skipped_lines) > 0:
+        print "Skipped lines: %s" % len(skipped_lines)
+    if showskipped:
+        print "Skipped lines:\n"
+        for l in skipped_lines:
+            print l
 
     # print grand total for:
     # FIXME: make pretty output
