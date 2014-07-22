@@ -289,9 +289,9 @@ def main():
 
 
     if len(skipped_lines) > 0:
-        print "Skipped lines: %s" % len(skipped_lines)
+        print "Skipped lines (total): %s" % len(skipped_lines)
     if showskipped:
-        print "Skipped lines:\n"
+        print "Skipped lines (details):\n"
         for l in skipped_lines:
             print l
 
