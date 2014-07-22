@@ -178,6 +178,7 @@ def main():
     total_lines = len(lines)
 
     if showexample:
+        print "Displaying the first access log line:"
         example_line = lines[0].split(' ')
         el = 0
         print "\ncol:\tvalue:\n"
