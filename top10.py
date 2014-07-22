@@ -109,6 +109,7 @@ noclient    = options.noclient
 ipcol       = options.ipcol
 urlcol      = options.urlcol
 showskipped = options.showskipped
+showexample = options.example
 
 if debug: print "Debug mode enabled."
 
@@ -175,9 +176,20 @@ def main():
     # read logfile
     lines = readFile(logfile)
     total_lines = len(lines)
+
+    if showexample:
+        example_line = lines[0].split(' ')
+        el = 0
+        print "\ncol:\tvalue:\n"
+        for part in example_line:
+            print "%s:\t%s" % (el,part)
+            el += 1
+        sys.exit()
+    
     print "Found %s entries" % total_lines
     if options.skipstring:
         print "Skipping lines starting with %s" % options.skipstring 
+
     # keep track of lines count in timeframe
     line_count = 0
     # parse logfile
