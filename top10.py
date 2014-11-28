@@ -187,14 +187,23 @@ def main():
             el += 1
         sys.exit()
     
-    print "Found %s entries" % total_lines
+    #print "Found %s entries" % total_lines
+    print "Analyzing %s lines:" % total_lines
     if options.skipstring:
         print "Skipping lines starting with %s" % options.skipstring 
 
     # keep track of lines count in timeframe
-    line_count = 0
+    line_count = 1
+    # progress bar counter (up 1, each iteration)
+    p = 0
     # parse logfile
     for line in lines:
+        # funky progressbar
+        point = total_lines / 100
+        inc = total_lines / 40
+        if(p % point == 0):
+            sys.stdout.write("\r[" + "=" * (p / inc) +  " " * ((total_lines - p)/ inc) + "]" +  str(p / point) + "%")
+            sys.stdout.flush()
         if debug: print "DEBUG: line: %s" % line
         if apacheconf:
             try:
@@ -285,6 +294,8 @@ def main():
             else:
                 # list is empty so next position is 1
                 client_list[client] = 1
+        # for the progress bar, up the counter by 1 
+        p += 1
 
     # sort lists 
     if not topcount:
