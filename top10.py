@@ -200,9 +200,14 @@ def main():
     for line in lines:
         # funky progressbar
         point = total_lines / 100
-        inc = total_lines / 40
+        inc = total_lines / 20
         if(p % point == 0):
-            sys.stdout.write("\r[" + "=" * (p / inc) +  " " * ((total_lines - p)/ inc) + "]" +  str(p / point) + "%")
+            outputbar = "\r[" + "#" * (p / inc) +  " " * ((total_lines - p)/ inc) + "]" 
+            # ugly fix for missing whitespace
+            if len(outputbar) == 22:
+                outputbar = "\r[" + "#" * (p / inc) +  " " * ((total_lines - p)/ inc) + " ]"  # fix is at the end: ' ]'
+            outputperc = str(p / point) + "%"
+            sys.stdout.write(outputbar + outputperc)
             sys.stdout.flush()
         if debug: print "DEBUG: line: %s" % line
         if apacheconf:
@@ -222,9 +227,14 @@ def main():
                     print "DEBUG: full request: %s" % line.split(' ')
                     print "DEBUG: error caught: %s" % e
                 # parser.exit()
-        if ipcol and urlcol:
+        if ipcol or urlcol:
             try:
                 url = line.split(' ')[int(urlcol)].strip()
+            except:
+                if debug: print "[DEBUG] SKIPPED line: %s" % line
+                skipped_lines.append(line)
+                pass
+            try:
                 client = line.split(' ')[int(ipcol)].replace('(','').replace(')','').strip()
             except:
                 if debug: print "[DEBUG] SKIPPED line: %s" % line
@@ -297,6 +307,8 @@ def main():
         # for the progress bar, up the counter by 1 
         p += 1
 
+    # empty line, for great power!
+    print ""
     # sort lists 
     if not topcount:
         sorted_url = sorted(url_list.iteritems(), key=operator.itemgetter(1), reverse=True)[:10]
