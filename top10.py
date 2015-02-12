@@ -19,6 +19,16 @@ import os
 import re
 import sys
 
+# see if we can import prettytable
+try:
+    from prettytable import PrettyTable
+    pretty_tables = True
+except:
+    # alas ..
+    print "Pssh, if you'd install python-prettytable, the output would look a lot nicer!"
+    pretty_tables = False
+
+
 # populate parser
 parser = OptionParser(usage="%prog -f <access logfile> [-c <apache configfile> -n <logformat nickname> [ -F <from date> -T <to date> ]]")
 parser.add_option("-f",
@@ -36,11 +46,6 @@ parser.add_option("--date-to", "-T",
         type="string",
         dest="date_to",
         help="End date and time in DDMMYYYYhhmm format. Requires -c option!")
-parser.add_option("-c",
-        action="store",
-        type="string",
-        dest="apacheconf",
-        help="Apache configuration file that contains the LogFormat definition")
 parser.add_option("-s", "--skip",
         action="store",
         type="string",
@@ -99,7 +104,6 @@ parser.add_option("-k", "--showskipped",
 
 # our logfile from optionparser
 logfile     = options.logfile
-apacheconf  = options.apacheconf
 nickname    = options.nickname
 debug       = options.debug
 clienthost  = options.clienthost
@@ -118,13 +122,6 @@ def run():
     if options.logfile is None:
         parser.print_help()
         sys.exit()
-
-    if apacheconf is not None:
-        if nickname is None:
-            parser.error("Missing LogFormat nickname")
-            sys.exit()
-        else:
-            getFormatString(nickname)
 
     # check if file exists
     if os.path.exists(logfile):
@@ -145,27 +142,6 @@ def stripSlashes(s):
     r = re.sub(r"\\(n|r)", "\n", s)
     r = re.sub(r"\\", "", r)
     return r
-
-def getFormatString(s):
-    global pos_r, pos_h, pos_t
-    lines = readFile(apacheconf)
-    for line in lines:
-        if "LogFormat" in line:
-            if line.strip().endswith(nickname):
-                line = stripSlashes(line.replace("LogFormat","").lstrip().rstrip().replace('\"', '')).split(' ')
-                if debug:
-                    print "DEBUG: Line: %s" % line
-                if clienthost:
-                    pos_h = line.index(clienthost)
-                else:
-                    pos_h = line.index("%h")
-                pos_r = line.index("%r")
-                pos_t = line.index("%t")
-                if debug: 
-                    print "DEBUG: LogFormat line with %s: %s" % (nickname,line)
-                    print "DEBUG: Found hostname at %s" % pos_h
-                    print "DEBUG: Found request at %s" % pos_r
-                    print "DEBUG: Found datetime at %s" % pos_t
 
 def main():
     # create empty lists
@@ -198,35 +174,18 @@ def main():
     p = 0
     # parse logfile
     for line in lines:
-        # funky progressbar
+        # display funky progressbar
         point = total_lines / 100
         inc = total_lines / 20
         if(p % point == 0):
-            outputbar = "\r[" + "#" * (p / inc) +  " " * ((total_lines - p)/ inc) + "]" 
+            outputbar = "\r[" + "=" * (p / inc) +  " " * ((total_lines - p)/ inc) + "] " 
             # ugly fix for missing whitespace
-            if len(outputbar) == 22:
-                outputbar = "\r[" + "#" * (p / inc) +  " " * ((total_lines - p)/ inc) + " ]"  # fix is at the end: ' ]'
+            if len(outputbar) == 23:
+                outputbar = "\r[" + "=" * (p / inc) +  " " * ((total_lines - p)/ inc) + " ] "  # fix is at the end: ' ]'
             outputperc = str(p / point) + "%"
             sys.stdout.write(outputbar + outputperc)
             sys.stdout.flush()
         if debug: print "DEBUG: line: %s" % line
-        if apacheconf:
-            try:
-                url = line.split(' ')[pos_r+2]
-                client = line.split(' ')[pos_h].replace('(','').replace(')','').strip()
-            except:
-                if debug: print "[DEBUG] SKIPPED line: %s" % line
-                skipped_lines.append(line)
-                pass
-            try:
-                reqdate = datetime.strptime(line.split(' ')[pos_t].replace('[',''), '%d/%b/%Y:%H:%M:%S')
-                #if debug: print "DEBUG: full request: %s" % line.split(' ')
-            except ValueError as e:
-                print "ERROR: LogFormat datetime incorrect! - FIXME"
-                if debug: 
-                    print "DEBUG: full request: %s" % line.split(' ')
-                    print "DEBUG: error caught: %s" % e
-                # parser.exit()
         if ipcol or urlcol:
             try:
                 url = line.split(' ')[int(urlcol)].strip()
@@ -250,47 +209,29 @@ def main():
                 pass
 
         # fill lists
-        if apacheconf:
-            if options.date_from:
-                if options.date_to:
-                    date_from = datetime.strptime(options.date_from, '%d%m%Y%H%M%S')
-                    date_to = datetime.strptime(options.date_to, '%d%m%Y%H%M%S')
-                    if date_from <= reqdate <= date_to:
-                        line_count += 1
-                        if debug: print "Date from req: %s is between %s and %s" % (reqdate,date_from,date_to)
-                        # determine next list position
-                        if url in url_list:
-                            url_list[url] = int(url_list[url]) + 1
-                        else:
-                            # list is empty so next position is 1
-                            url_list[url] = 1
-                        # determine next list position
-                        if client in client_list:
-                            client_list[client] = int(client_list[client]) + 1
-                        else:
-                            # list is empty so next position is 1
-                            client_list[client] = 1
+        if options.date_from:
+            if options.date_to:
+                date_from = datetime.strptime(options.date_from, '%d%m%Y%H%M%S')
+                date_to = datetime.strptime(options.date_to, '%d%m%Y%H%M%S')
+                if date_from <= reqdate <= date_to:
+                    line_count += 1
+                    if debug: print "Date from req: %s is between %s and %s" % (reqdate,date_from,date_to)
+                    # determine next list position
+                    if url in url_list:
+                        url_list[url] = int(url_list[url]) + 1
                     else:
-                        if debug: print "Date from req: %s is NOT between %s and %s" % (reqdate,date_from,date_to)
-
-            # apache specified but no dates, parse full log file
-            # FIXME: repeating code
-            else:
-                # determine next list position
-                if url in url_list:
-                    url_list[url] = int(url_list[url]) + 1
+                        # list is empty so next position is 1
+                        url_list[url] = 1
+                    # determine next list position
+                    if client in client_list:
+                        client_list[client] = int(client_list[client]) + 1
+                    else:
+                        # list is empty so next position is 1
+                        client_list[client] = 1
                 else:
-                    # list is empty so next position is 1
-                    url_list[url] = 1
-                # determine next list position
-                if client in client_list:
-                    client_list[client] = int(client_list[client]) + 1
-                else:
-                    # list is empty so next position is 1
-                    client_list[client] = 1
+                    if debug: print "Date from req: %s is NOT between %s and %s" % (reqdate,date_from,date_to)
 
-        # apache conf is not being used so no need to check dates
-        # FIXME: repeating code ..
+        # no from/to dates, so parse full log file
         else:
             # determine next list position
             if url in url_list:
@@ -304,10 +245,11 @@ def main():
             else:
                 # list is empty so next position is 1
                 client_list[client] = 1
+
         # for the progress bar, up the counter by 1 
         p += 1
 
-    # empty line, for great power!
+    # print empty line, for great power!!!  (and pretty formatting)
     print ""
     # sort lists 
     if not topcount:
@@ -332,7 +274,6 @@ def main():
             print l
 
     # print grand total for:
-    # FIXME: make pretty output
 
     if not nourl:
         # top 10 sites
@@ -340,10 +281,19 @@ def main():
             print "\nTOP 10 REQUESTED URLs"
         else:
             print "\nTOP %s REQUESTED URLs" % topcount
-        print "\nVisits\tURL\n"
-        #print "----------------------"
+        if pretty_tables:
+            table = PrettyTable(["Visits", "URL"])
+            table.align["URL"] = "l"
+            table.padding_width = 1
+        else:
+            print "\nVisits\tURL\n"
         for k,v in sorted_url:
-            print "%s\t%s" % (v,k)
+            if pretty_tables:
+                table.add_row([v, k])
+            else:
+                print "%s\t%s" % (v,k)
+        if pretty_tables:
+            print table
         
     if not noclient:
         # top 10 clients
@@ -351,10 +301,19 @@ def main():
             print "\nTOP 10 client IP's"
         else:
             print "\nTOP %s client IP's" % topcount
-        print "\nVisits\tIP\n"
-        #print "----------------------"
+        if pretty_tables:
+            table = PrettyTable(["Visits", "IP"])
+            table.align["IP"] = "l"
+            table.padding_width = 1
+        else:
+            print "\nVisits\tIP\n"
         for k,v in sorted_client:
-            print "%s\t%s" % (v,k)
+            if pretty_tables:
+                table.add_row([v, k])
+            else:
+                print "%s\t%s" % (v,k)
+        if pretty_tables:
+            print table
 
 
 if __name__ == '__main__':

@@ -4,3 +4,5 @@
 *.log
 *_log
 *.conf
+mail*
+access*
