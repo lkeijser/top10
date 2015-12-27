@@ -2,14 +2,14 @@
 """
 
     Small script that will output the top 10
-    most accessed sites and client IP's.
+    most accessed sites and client IP's when 
+    parsing an apache access log file.
 
-    L.S. Keijser <keijser@stone-it.com>
+    L.S. Keijser <leon@gotlinux.nl>
 
     TODO:
     - fix FIXME's :-)
     - add error checking (LogFormat nick, all params, etc etc)
-    - 
 
 """
 import operator
@@ -96,6 +96,10 @@ parser.add_option("-k", "--showskipped",
         action="store_true",
         dest="showskipped",
         help="Print the skipped (due to an error) lines at the end of processing.")
+parser.add_option("-p", "--nopretty",
+        action="store_true",
+        dest="nopretty",
+        help="Don't make use of prettytable")
 
 
 # parse cmd line options
@@ -114,8 +118,12 @@ ipcol       = options.ipcol
 urlcol      = options.urlcol
 showskipped = options.showskipped
 showexample = options.example
+nopretty    = options.nopretty
 
 if debug: print "Debug mode enabled."
+
+# show pretty tables?
+if nopretty: pretty_tables = False
 
 def run():
     # check for all args
